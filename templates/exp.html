@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+
+    <head>
+        <title>jspsych + psiturk example - simple go/no-go reaction time test</title>
+        <script src="/static/lib/jquery-min.js" type="text/javascript"></script>
+        <script src="/static/lib/underscore-min.js" type="text/javascript"></script>
+        <script src="/static/lib/backbone-min.js" type="text/javascript"></script>
+
+        <script src="/static/js/jspsych/jspsych.js" type="text/javascript"></script>
+        <script src="/static/js/jspsych/plugins/jspsych-text.js" type="text/javascript"></script>
+        <script src="/static/js/jspsych/plugins/jspsych-single-stim.js" type="text/javascript"></script>
+        <script src="/static/js/jspsych/plugins/jspsych-call-function.js" type="text/javascript"></script>
+
+        <script type="text/javascript">
+            // These fields provided by the psiTurk Server
+            var uniqueId = "{{ uniqueId }}"; // a unique string identifying the worker/task
+            var adServerLoc = "{{ adServerLoc }}"; // the location of your ad (so you can send user back at end of experiment)
+            var mode = "{{ mode }}"; // is this running live, sandbox, or in debug mode?
+        </script>
+
+        <!-- utils.js and psiturk.js provide the basic psiturk functionality -->
+        <script src="/static/js/utils.js" type="text/javascript"></script>
+        <script src="/static/js/psiturk.js" type="text/javascript"></script>
+
+        <link href="/static/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+
+    <body>
+        <div id='jspsych-target'></div>
+    </body>
+    <script>
+        /* load psiturk */
+        var psiturk = new PsiTurk(uniqueId, adServerLoc, mode);
+
+        /* text blocks */
+
+        var welcome_block = {
+            type: "text",
+            text: "Welcome to the experiment. Press any key to begin."
+        };
+
+        var instructions_block = {
+            type: "text",
+            text: "<p>In this study, we will ask you to imagine you are choosing a substitute for a garment you would like to buy.</p><p>If the dress on the right is a good substitute for the one on the left, " +
+                "press the left arrow key.</p>" +
+                "<p>If the dress on the right is <strong>not</strong>, a good substitute for the one on the left, " +
+                "press the right arrow key.</p>" +
+                "<div class='left center-content'><img src='/static/images/ins_1.png'></img>" +
+                "<div class='right center-content'><img src='/static/images/ins_2.png'></img>" +
+                "<p>Press any key to begin.</p>",
+            timing_post_trial: 2000
+        };
+
+        /* stimulus block */
+
+        var test_stimuli = [{
+            image: "/static/images/Belk_1.png",
+            data: {
+                response: 'exp' //set this as an experimental trial (as opposed to catch or control)
+            }
+        }, {
+            image: "/static/images/LAT_1.png",
+            data: {
+                response: 'exp' //set this as an experimental trial (as opposed to catch or control)
+            }
+          }, {
+              image: "/static/images/LAT_2.png",
+              data: {
+                  response: 'exp' //set this as an experimental trial (as opposed to catch or control)
+              }
+        }];
+
+        var all_trials = jsPsych.randomization.repeat(test_stimuli, 10, true);
+
+        var post_trial_gap = function() {
+            return Math.floor(Math.random() * 1500) + 750;
+        };
+
+        var test_block = {
+            type: "single-stim",
+            stimuli: all_trials.image,
+            choices: ['leftarrow', 'rightarrow'],
+            timing_stim: 6000,
+            timing_response: 3000,
+            timing_post_trial: post_trial_gap,
+            data: all_trials.data
+        };
+
+        /* debrief block */
+
+        //var debrief_block = {
+          //  type: "text",
+            //text: function() {
+              //  return "<p>Your average response time was <strong>" +
+              //  getAverageResponseTime() + "ms</strong>. Press " +
+              //  "any key to complete the experiment. Thank you!</p>";
+            //}
+        //};
+
+        //function getAverageResponseTime() {
+
+          //  var trials = jsPsych.dataAPI.getTrialsOfType('single-stim');
+
+          //  var sum_rt = 0;
+          //  var valid_trial_count = 0;
+          //  for (var i = 0; i < trials.length; i++) {
+          //      if (trials[i].response == 'go' && trials[i].rt > -1) {
+          //          sum_rt += trials[i].rt;
+          //          valid_trial_count++;
+          //      }
+          //  }
+          //  return Math.floor(sum_rt / valid_trial_count);
+        //}
+
+
+        /* define experiment structure */
+
+        var experiment_blocks = [];
+
+        experiment_blocks.push(welcome_block);
+
+        experiment_blocks.push(instructions_block);
+
+        experiment_blocks.push(test_block);
+
+        //experiment_blocks.push(debrief_block);
+
+
+        /* start the experiment */
+
+        jsPsych.init({
+            display_element: $('#jspsych-target'),
+            experiment_structure: experiment_blocks,
+            on_finish: function() {
+                psiturk.saveData({
+                    success: function() { psiturk.completeHIT(); }
+                });
+            },
+            on_data_update: function(data) {
+                psiturk.recordTrialData(data);
+            }
+        });
+    </script>
+
+</html>
